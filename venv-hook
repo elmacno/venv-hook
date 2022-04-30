@@ -1,0 +1,44 @@
+find_virtualenvrc() {
+  RC_FILE=.virtualenvrc
+  CWD="$@"
+
+  if [ -f "${CWD}"/${RC_FILE} ]; then
+    TMP=$(cat "${CWD}"/${RC_FILE})
+    if [[ ! -z ${TMP} ]]; then
+      echo ${TMP}
+    fi
+  else
+    UPD=$(dirname "${CWD}")
+    if [ "$UPD" != "/" ]; then
+      find_virtualenvrc "$UPD"
+    fi
+  fi
+}
+
+_venv_hook() {
+  TARGET_VIRTUALENV="$(find_virtualenvrc $PWD)"
+  if [[ ! -z ${TARGET_VIRTUALENV} ]]; then
+    if [[ "${TARGET_VIRTUALENV}" != "${VIRTUAL_ENV}" ]]; then
+      if [[ ! -z ${VIRTUAL_ENV} && "$(which deactivate)" != "" ]]; then
+        echo "Deactivated \"${VIRTUAL_ENV}\""
+        deactivate
+      fi
+      echo "Activating \"${TARGET_VIRTUALENV}\""
+      source "${TARGET_VIRTUALENV}/bin/activate"
+    fi
+  else
+    if [[ ! -z ${VIRTUAL_ENV} && "$(which deactivate)" != "" ]]; then
+      echo "Deactivated \"${VIRTUAL_ENV}\""
+      deactivate
+    fi
+  fi
+}
+
+if [[ ! -z ${BASH_VERSION} ]]; then
+  PROMPT_COMMAND="_venv_hook;${PROMPT_COMMAND}"
+elif [[ ! -z ${ZSH_VERSION} ]]; then
+  autoload -U add-zsh-hook
+  add-zsh-hook chpwd _venv_hook
+fi
+_venv_hook
+
